@@ -67,3 +67,24 @@ int main(void)
      if (sample_count == FILTER_SIZE)
          printf("\n  ** Filter buffer full! Full moving average now active **\n\n");
  }
+printf("  ==========================================\n");
+printf("\n  Total %d samples processed.\n", sample_count);
+
+compute_statistics(records, sample_count, &stats);
+print_statistics(&stats);
+
+printf("\n  [Saving files...]\n");
+printf("  Save path: ./ (current directory)\n\n");
+
+if (save_report_txt(records, sample_count, &stats))
+    printf("  [OK] Report saved -> ./%s\n", REPORT_FILENAME);
+else
+    printf("  [FAIL] Report save failed\n");
+
+if (save_data_csv(records, sample_count))
+    printf("  [OK] CSV saved -> ./%s\n", CSV_FILENAME);
+else
+    printf("  [FAIL] CSV save failed\n");
+
+printf("\n  Program complete.\n\n");
+return 0;
