@@ -50,3 +50,20 @@ int main(void)
     printf("  Bit3=VALID  | Bit2=BUF_FULL   | Bit1=(reserved)| Bit0=INIT_DONE\n");
 
     print_header();
+ while (sample_count < MAX_SAMPLES)
+ {
+     raw_value = generate_range_value();
+
+     printf("  [#%3d] Input: %4d\n", sample_count + 1, raw_value);
+
+     process_sample(records, sample_count, &cb, raw_value);
+
+     print_record(&records[sample_count], sample_count);
+     print_bit_pattern(records[sample_count].status_flags);
+     print_buffer_state(&cb);
+
+     sample_count++;
+
+     if (sample_count == FILTER_SIZE)
+         printf("\n  ** Filter buffer full! Full moving average now active **\n\n");
+ }
