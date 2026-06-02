@@ -50,6 +50,7 @@ int main(void)
     printf("  Bit3=VALID  | Bit2=BUF_FULL   | Bit1=(reserved)| Bit0=INIT_DONE\n");
 
     print_header();
+
  while (sample_count < MAX_SAMPLES)
  {
      raw_value = generate_range_value();
