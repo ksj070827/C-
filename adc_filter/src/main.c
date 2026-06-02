@@ -1,1 +1,52 @@
-여기올려주세요
+/*
+ * main.c
+ * ADC sensor moving average filter - main entry point
+ *
+ * Signal model:
+ *   - Input range: 482 ~ 543 fixed
+ *   - Total samples: 50
+ *   - Filter goal: remove noise, restore center value (~512)
+ */
+
+#include "adc_filter.h"
+
+#define INPUT_MIN   482
+#define INPUT_MAX   543
+#define INPUT_RANGE (INPUT_MAX - INPUT_MIN)
+
+static int generate_range_value(void)
+{
+    return INPUT_MIN + (rand() % (INPUT_RANGE + 1));
+}
+
+int main(void)
+{
+    SensorRecord   records[MAX_SAMPLES];
+    CircularBuffer cb;
+    Statistics     stats;
+
+    int i;
+    int sample_count = 0;
+    int raw_value    = 0;
+
+    srand((unsigned int)time(NULL));
+
+    init_circular_buffer(&cb);
+    for (i = 0; i < MAX_SAMPLES; i++)
+        init_sensor_record(&records[i], 1);
+
+    printf("\n");
+    printf("  ==========================================\n");
+    printf("  ADC Moving Average Filter Simulator\n");
+    printf("  [Signal model] Fixed range input\n");
+    printf("  ==========================================\n");
+    printf("  - Input range : %d ~ %d (width: %d)\n", INPUT_MIN, INPUT_MAX, INPUT_RANGE);
+    printf("  - Filter size : %d-sample moving average\n", FILTER_SIZE);
+    printf("  - Total samples: %d\n", MAX_SAMPLES);
+    printf("  ==========================================\n");
+
+    printf("\n  [Status register bit structure]\n");
+    printf("  Bit7=ACTIVE | Bit6=FILTER_RDY | Bit5=OVER_ERR | Bit4=UNDER_ERR\n");
+    printf("  Bit3=VALID  | Bit2=BUF_FULL   | Bit1=(reserved)| Bit0=INIT_DONE\n");
+
+    print_header();
