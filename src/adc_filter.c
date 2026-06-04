@@ -168,32 +168,132 @@ void process_sample(SensorRecord *records, int index,
  * [3번 팀원 작성 영역] 통계 분석 + 콘솔 출력
  * ========================================================= */
 
+/* =========================================================
+ * 콘솔 출력 함수
+ * ========================================================= */
+
 void print_header(void)
 {
-    /* TODO: 3번 팀원 구현 */
+    printf("\n");
+    printf("+--------------------------------------------------------------+\n");
+    printf("|     ADC 센서 이동 평균 필터 시뮬레이터 (윈도우 크기: %2d)     |\n", FILTER_SIZE);
+    printf("+----+----------+----------+--------+-----------------+--------+\n");
+    printf("|  # |  원본값  |  필터값  |   차이 | 상태            |  시각  |\n");
+    printf("+----+----------+----------+--------+-----------------+--------+\n");
 }
 
 void print_record(const SensorRecord *rec, int index)
 {
-    /* TODO: 3번 팀원 구현 */
+    double diff = rec->raw_value - rec->filtered_value;
+    printf("|%3d |  %4d    | %6.1f   | %+6.1f | %-15s | %s |\n",
+           index + 1,
+           rec->raw_value,
+           rec->filtered_value,
+           diff,
+           decode_status(rec->status_flags),
+           rec->timestamp);
 }
 
 void print_buffer_state(const CircularBuffer *cb)
 {
-    /* TODO: 3번 팀원 구현 */
+    int i, pos;
+    printf("  [버퍼 상태] 저장 수: %d/%d | 합계: %ld | 현재 평균: %.1f\n",
+           cb->count, FILTER_SIZE, cb->sum,
+           compute_moving_average(cb));
+    printf("  [버퍼 내용] ");
+    for (i = 0; i < FILTER_SIZE; i++) {
+        pos = ((cb->head - 1 - i) + FILTER_SIZE * 2) % FILTER_SIZE;
+        if (i < cb->count)
+            printf("[%d]", cb->buffer[pos]);
+        else
+            printf("[ - ]");
+        if (i < FILTER_SIZE - 1) printf(" -> ");
+    }
+    printf(" (최신->과거)\n");
 }
+
+/* =========================================================
+ * 통계 분석
+ * ========================================================= */
 
 void compute_statistics(const SensorRecord *records,
                         int count, Statistics *stats)
 {
-    /* TODO: 3번 팀원 구현 */
+    int i;
+    double raw_sum = 0.0, filt_sum = 0.0;
+    double raw_var = 0.0, filt_var = 0.0;
+    double raw_std, filt_std;
+
+    memset(stats, 0, sizeof(Statistics));
+    if (count == 0) return;
+
+    stats->total_samples = count;
+    stats->raw_min       = records[0].raw_value;
+    stats->raw_max       = records[0].raw_value;
+    stats->filtered_min  = records[0].filtered_value;
+    stats->filtered_max  = records[0].filtered_value;
+
+    for (i = 0; i < count; i++) {
+        const SensorRecord *r = &records[i];
+        if (check_flag(r->status_flags, FLAG_OVERRANGE_ERR) ||
+            check_flag(r->status_flags, FLAG_UNDERRANGE_ERR)) {
+            stats->error_count++;
+            continue;
+        }
+        stats->valid_samples++;
+        raw_sum  += r->raw_value;
+        filt_sum += r->filtered_value;
+        if (r->raw_value      < stats->raw_min)      stats->raw_min      = r->raw_value;
+        if (r->raw_value      > stats->raw_max)      stats->raw_max      = r->raw_value;
+        if (r->filtered_value < stats->filtered_min) stats->filtered_min = r->filtered_value;
+        if (r->filtered_value > stats->filtered_max) stats->filtered_max = r->filtered_value;
+    }
+
+    if (stats->valid_samples == 0) return;
+
+    stats->raw_avg      = raw_sum  / stats->valid_samples;
+    stats->filtered_avg = filt_sum / stats->valid_samples;
+
+    for (i = 0; i < count; i++) {
+        double d_raw, d_filt;
+        const SensorRecord *r = &records[i];
+        if (check_flag(r->status_flags, FLAG_OVERRANGE_ERR) ||
+            check_flag(r->status_flags, FLAG_UNDERRANGE_ERR)) continue;
+        d_raw  = r->raw_value - stats->raw_avg;
+        d_filt = r->filtered_value - stats->filtered_avg;
+        raw_var  += d_raw  * d_raw;
+        filt_var += d_filt * d_filt;
+    }
+    raw_var  /= stats->valid_samples;
+    filt_var /= stats->valid_samples;
+
+    raw_std  = sqrt(raw_var);
+    filt_std = sqrt(filt_var);
+    if (raw_std > 0.0)
+        stats->noise_reduction = (1.0 - filt_std / raw_std) * 100.0;
+    else
+        stats->noise_reduction = 0.0;
 }
 
 void print_statistics(const Statistics *stats)
 {
-    /* TODO: 3번 팀원 구현 */
+    printf("\n+--------------------------------------------------------------+\n");
+    printf("|                      분석 통계 요약                         |\n");
+    printf("+--------------------------------------------------------------+\n");
+    printf("|  총 샘플 수    : %-5d  |  유효 샘플    : %-5d            |\n",
+           stats->total_samples, stats->valid_samples);
+    printf("|  에러 횟수     : %-5d                                      |\n",
+           stats->error_count);
+    printf("+--------------------------------------------------------------+\n");
+    printf("|  [원본 데이터]   최솟값: %6.1f | 최댓값: %6.1f | 평균: %6.1f |\n",
+           stats->raw_min, stats->raw_max, stats->raw_avg);
+    printf("|  [필터 데이터]   최솟값: %6.1f | 최댓값: %6.1f | 평균: %6.1f |\n",
+           stats->filtered_min, stats->filtered_max, stats->filtered_avg);
+    printf("+--------------------------------------------------------------+\n");
+    printf("|  노이즈 감소율 : %+.2f %%                                   |\n",
+           stats->noise_reduction);
+    printf("+--------------------------------------------------------------+\n");
 }
-
 /* =========================================================
  * [4번 팀원 작성 영역] 파일 입출력 + 유틸리티
  * ========================================================= */
