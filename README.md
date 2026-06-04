@@ -65,14 +65,4 @@ adc_filter/
 
 ---
 
-## 실행 방법
-
-```bash
-# 1단계: 컴파일
-gcc -Wall -Wextra -o adc_filter main.c adc_filter.c -lm
-
-# 2단계: 실행
-./adc_filter
-```
-
 실행 후 현재 디렉터리에 `adc_report.txt`와 `adc_data.csv`가 자동 생성됩니다.
