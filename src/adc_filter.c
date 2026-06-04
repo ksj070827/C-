@@ -298,32 +298,81 @@ void print_statistics(const Statistics *stats)
  * [4번 팀원 작성 영역] 파일 입출력 + 유틸리티
  * ========================================================= */
 
-void get_timestamp(char *buf, size_t size)
-{
-    /* TODO: 4번 팀원 구현 */
-}
-
-int acquire_sensor_data(int *value)
-{
-    /* TODO: 4번 팀원 구현 */
-    return 0;
-}
-
-int validate_range(int value, unsigned char *flags)
-{
-    /* TODO: 4번 팀원 구현 */
-    return 0;
-}
+/* =========================================================
+ * [기능 6] 파일 입출력 (File I/O)
+ * ========================================================= */
 
 int save_report_txt(const SensorRecord *records, int count,
                     const Statistics *stats)
 {
-    /* TODO: 4번 팀원 구현 */
-    return 0;
+    int i, b;
+    unsigned char v;
+    FILE *fp = fopen(REPORT_FILENAME, "w");
+    if (!fp) {
+        perror("  [오류] 보고서 파일 열기 실패");
+        return 0;
+    }
+
+    fprintf(fp, "====================================================\n");
+    fprintf(fp, "  ADC 센서 이동 평균 필터 시뮬레이션 결과 보고서\n");
+    fprintf(fp, "  필터 윈도우 크기: %d\n", FILTER_SIZE);
+    fprintf(fp, "====================================================\n\n");
+
+    fprintf(fp, "%-4s %-8s %-10s %-8s %-18s %-8s\n",
+            "No.", "원본값", "필터값", "차이", "상태", "시각");
+    fprintf(fp, "----------------------------------------------------\n");
+
+    for (i = 0; i < count; i++) {
+        const SensorRecord *r = &records[i];
+        double diff = r->raw_value - r->filtered_value;
+        fprintf(fp, "%-4d %-8d %-10.2f %-+8.2f %-18s %-8s\n",
+                i + 1, r->raw_value, r->filtered_value, diff,
+                decode_status(r->status_flags), r->timestamp);
+
+        v = r->status_flags;
+        fprintf(fp, "     상태 레지스터(HEX): 0x%02X  BIN: 0b", v);
+        for (b = 7; b >= 0; b--) fprintf(fp, "%d", (v >> b) & 1);
+        fprintf(fp, "\n");
+    }
+
+    fprintf(fp, "\n====================================================\n");
+    fprintf(fp, "  분석 통계 요약\n");
+    fprintf(fp, "====================================================\n");
+    fprintf(fp, "  총 샘플 수   : %d\n", stats->total_samples);
+    fprintf(fp, "  유효 샘플    : %d\n", stats->valid_samples);
+    fprintf(fp, "  에러 횟수    : %d\n", stats->error_count);
+    fprintf(fp, "  원본  (min/max/avg) : %.1f / %.1f / %.1f\n",
+            stats->raw_min, stats->raw_max, stats->raw_avg);
+    fprintf(fp, "  필터  (min/max/avg) : %.1f / %.1f / %.1f\n",
+            stats->filtered_min, stats->filtered_max, stats->filtered_avg);
+    fprintf(fp, "  노이즈 감소율       : %.2f %%\n", stats->noise_reduction);
+    fprintf(fp, "====================================================\n");
+
+    fclose(fp);
+    return 1;
 }
 
 int save_data_csv(const SensorRecord *records, int count)
 {
-    /* TODO: 4번 팀원 구현 */
-    return 0;
+    int i;
+    FILE *fp = fopen(CSV_FILENAME, "w");
+    if (!fp) {
+        perror("  [오류] CSV 파일 열기 실패");
+        return 0;
+    }
+
+    fprintf(fp, "No,SensorID,RawValue,FilteredValue,Difference,"
+                "StatusHex,StatusStr,Timestamp\n");
+
+    for (i = 0; i < count; i++) {
+        const SensorRecord *r = &records[i];
+        double diff = r->raw_value - r->filtered_value;
+        fprintf(fp, "%d,%d,%d,%.2f,%.2f,0x%02X,%s,%s\n",
+                i + 1, r->sensor_id, r->raw_value, r->filtered_value,
+                diff, r->status_flags,
+                decode_status(r->status_flags), r->timestamp);
+    }
+
+    fclose(fp);
+    return 1;
 }
