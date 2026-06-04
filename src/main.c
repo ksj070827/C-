@@ -8,7 +8,7 @@
  *   - 필터 목표: 노이즈를 제거하여 중심값(약 512)에 가깝게 복원
  */
 
-#include "../include/adc_filter.h"
+#include "adc_filter.h"
 
 #define INPUT_MIN   482                       /* 입력값 최솟값          */
 #define INPUT_MAX   543                       /* 입력값 최댓값          */
